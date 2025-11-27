@@ -8,6 +8,16 @@ import argparse
 import numpy as np
 from time import sleep
 from numpy.random import randint
+from pathlib import Path
+
+
+
+BASE_DIR = Path(__file__).resolve().parents[2]   # .../ai-maze-python
+PKG_DIR = BASE_DIR / "maze_visualizer"
+DATA_DIR = PKG_DIR / "data"
+MAZES_DIR = DATA_DIR / "mazes"
+
+
 
 def is_in_map(pos, grid_dim):
     """
@@ -258,10 +268,19 @@ if __name__ == "__main__":
         if last_pos not in pos_history:
           pos_history.append(last_pos)
 
-    # export maze to .csv file
-    with open(f"mazes/maze_{iter_maze}.csv", "w", newline="") as f:
-      writer = csv.writer(f)
-      writer.writerows(grid)
+
+
+
+    MAZES_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = MAZES_DIR / f"maze_{iter_maze}.csv"
+
+    with out_path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerows(grid)
+
+
+        
+
     print(f"{time.time()-start_t:.3f} s")
 
   print(f"--- finished {time.time()-start_t0:.3f} s---")
