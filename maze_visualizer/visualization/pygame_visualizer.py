@@ -204,7 +204,9 @@ if __name__ == "__main__":
 
     # ---------------- Generation animation (live source) ----------------
         # ---------------- Generation animation (live source) ----------------
+        # ---------------- Generation animation (live source) ----------------
     if args.source == "live" and args.animate:
+        # Select step generator
         if args.gen_algo == "dfs":
             from maze_visualizer.algorithms.generation.dfs_generator import dfs_step_sequence
             step_gen = dfs_step_sequence(args.cols, args.rows)
@@ -217,40 +219,56 @@ if __name__ == "__main__":
         else:
             raise Exception("Animation not supported for this generation algorithm.")
 
-        # Play generation animation
-        for step_grid in step_gen:
-            if args.step:
-                # Step-by-step mode: wait for key each frame
-                should_continue = wait_for_step_or_quit()
-                if not should_continue:
+        step_iter = iter(step_gen)
+        last_grid = None  # <- keep track of the final maze
+
+        while True:
+            # Advance multiple gen steps per frame
+            for _ in range(args.gen_steps_per_frame):
+                try:
+                    step_grid = next(step_iter)
+                    last_grid = step_grid
+                except StopIteration:
+                    step_grid = None
+                    break
+
+            if step_grid is None:
+                break  # generation finished
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
                     finish = True
                     break
-            else:
-                # Time-based mode: allow quitting and run at fixed FPS
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        finish = True
-                        break
-                if finish:
-                    break
-                clock.tick(10)  # FPS for generation animation
+            if finish:
+                break
 
             draw_grid(step_grid.astype(int))
+            clock.tick(args.gen_fps)
 
-        # After animation finishes, capture final grid for possible solving
-        current_grid = step_grid.astype(int)
+        if last_grid is None:
+            raise Exception("Generation produced no frames.")
+        # This is the maze Dijkstra/BFS/DFS will solve
+        current_grid = last_grid.astype(int)
 
+    elif args.source == "live":
+        # Live but NOT animated: just generate once
+        maze = generate_maze(args.gen_algo, args.cols, args.rows)
+        current_grid = maze.grid.astype(int)
+        draw_grid(current_grid)
 
     else:
-        # Static display (CSV or live)
+        # source == "csv" branch: you've already loaded grid from file
         current_grid = grid.astype(int)
-        # Only draw immediately if we're NOT going to run a solver
-        if args.solve is None:
-            draw_grid(current_grid)
+        draw_grid(current_grid)
+
 
 
     # ---------------- Pathfinding animation (on current_grid) ----------------
+        # ---------------- Pathfinding animation (on current_grid) ----------------
     if args.solve is not None:
+        if current_grid is None:
+            raise Exception("No maze grid available for solving. Did generation fail?")
+
         if args.solve == "bfs":
             from maze_visualizer.algorithms.pathfinding.bfs_solver import bfs_step_sequence
             step_gen = bfs_step_sequence(current_grid)
@@ -266,7 +284,19 @@ if __name__ == "__main__":
         else:
             raise Exception("Invalid solver selected.")
 
-        for step_grid in step_gen:
+        step_iter = iter(step_gen)
+        while True:
+            # Advance multiple solver steps per frame
+            for _ in range(args.solve_steps_per_frame):
+                try:
+                    step_grid = next(step_iter)
+                except StopIteration:
+                    step_grid = None
+                    break
+
+            if step_grid is None:
+                break  # solving finished
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     finish = True
@@ -275,9 +305,11 @@ if __name__ == "__main__":
                 break
 
             draw_grid(step_grid.astype(int))
-            clock.tick(10)
+            clock.tick(args.solve_fps)
 
-        current_grid = step_grid.astype(int)
+        if step_grid is not None:
+            current_grid = step_grid.astype(int)
+
 
 
 
