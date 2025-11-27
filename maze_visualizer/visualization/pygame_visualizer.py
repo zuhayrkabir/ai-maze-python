@@ -54,10 +54,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--gen_algo",
-        choices=["dfs", "prim"],
+        choices=["dfs", "prim", "kruskal"],
         default="dfs",
         help="Maze generation algorithm when using live source",
     )
+
 
     parser.add_argument(
         "--animate",
@@ -154,8 +155,13 @@ if __name__ == "__main__":
         elif args.gen_algo == "prim":
             from maze_visualizer.algorithms.generation.prim_generator import prim_step_sequence
             step_gen = prim_step_sequence(args.cols, args.rows)
+        elif args.gen_algo == "kruskal":
+            from maze_visualizer.algorithms.generation.kruskal_generator import kruskal_step_sequence
+            step_gen = kruskal_step_sequence(args.cols, args.rows)
         else:
             raise Exception("Animation not supported for this algorithm.")
+
+
 
 
         for step_grid in step_gen:
