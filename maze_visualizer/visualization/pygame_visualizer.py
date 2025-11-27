@@ -58,13 +58,23 @@ if __name__ == "__main__":
         default="dfs",
         help="Maze generation algorithm when using live source",
     )
-
-
     parser.add_argument(
         "--animate",
         action="store_true",
-        help="Animate live maze generation (currently dfs only)",
+        help="Animate live maze generation",
     )
+    parser.add_argument(
+        "--solve",
+        choices=["bfs", "dfs", "astar"],
+        default=None,
+        help="Run an animated pathfinding algorithm on the maze (after it is loaded/generated).",
+    )
+    parser.add_argument(
+        "--step",
+        action="store_true",
+        help="Advance animation one step at a time on keypress instead of time-based playback.",
+    )
+
 
     args = parser.parse_args()
 
@@ -94,10 +104,10 @@ if __name__ == "__main__":
 
     else:
         # Live generation
-        if args.animate and args.gen_algo == "dfs":
-            # We will animate with dfs_step_sequence; no static grid yet
+        if args.animate:
+            # We'll animate generation later; no static grid yet
             grid = None
-            caption_text = f"Animating DFS maze generation ({args.rows}x{args.cols})"
+            caption_text = f"Animating {args.gen_algo.upper()} maze generation ({args.rows}x{args.cols})"
         else:
             # Static live maze
             maze = generate_maze(args.gen_algo, args.cols, args.rows)
@@ -147,7 +157,28 @@ if __name__ == "__main__":
                 )
         pygame.display.flip()
 
-    # ---------------- Static vs animated live mode ----------------
+
+    def wait_for_step_or_quit():
+        """
+        In step mode: wait until user presses space/enter/right, or closes the window.
+        Returns True if we should continue, False if user requested quit.
+        """
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return False
+                if event.type == pygame.KEYDOWN:
+                    if event.key in (pygame.K_SPACE, pygame.K_RETURN, pygame.K_RIGHT):
+                        waiting = False
+                        break
+            clock.tick(60)
+        return True
+
+
+
+    # ---------------- Generation animation (live source) ----------------
+        # ---------------- Generation animation (live source) ----------------
     if args.source == "live" and args.animate:
         if args.gen_algo == "dfs":
             from maze_visualizer.algorithms.generation.dfs_generator import dfs_step_sequence
@@ -159,13 +190,56 @@ if __name__ == "__main__":
             from maze_visualizer.algorithms.generation.kruskal_generator import kruskal_step_sequence
             step_gen = kruskal_step_sequence(args.cols, args.rows)
         else:
-            raise Exception("Animation not supported for this algorithm.")
+            raise Exception("Animation not supported for this generation algorithm.")
+
+        # Play generation animation
+        for step_grid in step_gen:
+            if args.step:
+                # Step-by-step mode: wait for key each frame
+                should_continue = wait_for_step_or_quit()
+                if not should_continue:
+                    finish = True
+                    break
+            else:
+                # Time-based mode: allow quitting and run at fixed FPS
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        finish = True
+                        break
+                if finish:
+                    break
+                clock.tick(10)  # FPS for generation animation
+
+            draw_grid(step_grid.astype(int))
+
+        # After animation finishes, capture final grid for possible solving
+        current_grid = step_grid.astype(int)
 
 
+    else:
+        # Static display (CSV or live)
+        current_grid = grid.astype(int)
+        # Only draw immediately if we're NOT going to run a solver
+        if args.solve is None:
+            draw_grid(current_grid)
 
+
+    # ---------------- Pathfinding animation (on current_grid) ----------------
+    if args.solve is not None:
+        if args.solve == "bfs":
+            from maze_visualizer.algorithms.pathfinding.bfs_solver import bfs_step_sequence
+            step_gen = bfs_step_sequence(current_grid.copy())
+        elif args.solve == "dfs":
+            from maze_visualizer.algorithms.pathfinding.dfs_solver import dfs_step_sequence
+            step_gen = dfs_step_sequence(current_grid)
+        elif args.solve == "astar":
+            # placeholder: astar_step_sequence(grid)
+            raise NotImplementedError("A* solve animation not implemented yet.")
+        else:
+            raise Exception("Invalid solver selected.")
 
         for step_grid in step_gen:
-            # Handle quit events during animation
+            # Allow quitting during solving animation
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     finish = True
@@ -174,15 +248,11 @@ if __name__ == "__main__":
                 break
 
             draw_grid(step_grid.astype(int))
-            clock.tick(10)  # adjust FPS for speed
+            clock.tick(30)  # 10 FPS; lower = slower, more visible
 
-        # After animation finishes, hold the last frame
-        final_grid = step_grid.astype(int)
-        draw_grid(final_grid)
+        # After solving, keep the last frame
+        current_grid = step_grid.astype(int)
 
-    else:
-        # Static display (CSV or live)
-        draw_grid(grid.astype(int))
 
     # ---------------- Event loop (hold final frame) ----------------
     while not finish:
