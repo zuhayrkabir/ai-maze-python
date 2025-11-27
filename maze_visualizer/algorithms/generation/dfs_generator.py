@@ -9,6 +9,8 @@ import numpy as np
 from time import sleep
 from numpy.random import randint
 from pathlib import Path
+from maze_visualizer.core.maze import Maze
+
 
 
 
@@ -21,24 +23,18 @@ MAZES_DIR = DATA_DIR / "mazes"
 
 def is_in_map(pos, grid_dim):
     """
-    Parameters
-    ----------
-    pos : tuple of 2 ints 
-        x, y coordinates in the grid system of current
-        position
-    grid_dim : tuple of ints
-        x, y dimension of the grid system
-
-    Returns
-        true if pos in map
-        false if not in map
+    pos: (x, y) index in the grid
+    grid_dim: (num_rows, num_cols)
     """
-    (max_x, max_y) = grid_dim # unroll the dimensions
-    (x, y) = pos # unroll the position coordinates
-    
-    x_in = (x <= max_x) & (x >= 0) # logical x in map
-    y_in = (y <= max_y) & (y >= 0) # logical y in map
-    return bool(x_in*y_in) # only true if both true
+    (max_x, max_y) = grid_dim       # these are *dimensions*, not max indices
+    (x, y) = pos
+
+    # valid indices: 0 <= x < max_x, 0 <= y < max_y
+    x_in = (x >= 0) & (x < max_x)
+    y_in = (y >= 0) & (y < max_y)
+    return bool(x_in * y_in)
+
+
 # ===========================
 def possible_next_steps(grid_dim, last_pos):
     """
@@ -137,151 +133,70 @@ def generate_step(grid, last_pos, pos_history, back_step):
             last_pos = last_pos[1]
             done = False
             return grid, last_pos, back_step, done
+        
+
+# Dynamic DFS Maze Generation Algorithm
+def generate_maze_dfs(width: int, height: int, seed: int | None = None) -> Maze:
+    """
+    Generate a maze using the original DFS-based algorithm.
+
+    Returns a Maze object with a numpy 2D grid.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    # Initialize grid full of zeros
+    grid = np.zeros((height, width), dtype=int)
+
+
+    # Start position and history (same logic as original main)
+    last_pos = (0, 0)
+    pos_history = [last_pos]
+    back_step = 0
+    done = False
+
+    # Define start and goal cells, as in the original script
+    grid[0, 0] = 2    # start
+    grid[-1, -1] = 3  # goal
+
+    # Core DFS carving loop – uses the existing generate_step function
+    while not done:
+        grid, last_pos, back_step, done = generate_step(grid, last_pos, pos_history, back_step)
+        if last_pos not in pos_history:
+            pos_history.append(last_pos)
+
+    return Maze(grid=grid)
+ 
 #==============================================================================
 #==============================================================================
 
 if __name__ == "__main__":
+    import argparse
+    import csv
+    import time
 
-  start_t0 = time.time()
+    start_t0 = time.time()
 
-  # define the two colors of the grid RGB
-  black = (0, 0, 0) # grid == 0
-  white = (255, 255, 255) # grid == 1
-  green = (50,205,50) # grid == 2
-  red = (255,99,71) # grid == 3
-  grey = (211,211,211) # for background
-  blue = (153,255,255) # grid[x][y] == 4, where current position is
-
-  # set the height/width of each location on the grid
-  height = 7
-  width = height # i want the grid square
-  margin = 1 # sets margin between grid locations
-
-  # parsing user input
-  # example: python maze_generator.py --display=True --num_mazes=1
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--display", help="Display generating process 0: False, 1:True", default=1, type=int)
-  parser.add_argument("--num_mazes", help="Number of mazes to generate.", default=1, type=int)
-  args = parser.parse_args()
-
-  for iter_maze in range(args.num_mazes):
-    start_t = time.time()
-
-    # initialize the grid array full of zeros
-    num_rows = 41
-    num_columns = num_rows
-    grid = np.zeros((num_rows, num_columns))
-
-    if args.display == 1:
-      # initialize pygame
-      pygame.init()
-
-      # congiguration of the window
-      WINDOW_SIZE = [330, 330]
-      screen = pygame.display.set_mode(WINDOW_SIZE)
-      # screen title
-      pygame.display.set_caption(f"Generating Maze {iter_maze+1}/{args.num_mazes}...")
-
-      done = False # loop until done
-      run = False # when run = True start running the algorithm
-
-      clock = pygame.time.Clock() # to manage how fast the screen updates
-
-      idx_to_color = [black, white, green, red, blue]
-
-      # initialize last_pos variable. Its the starting point for the algorithm
-      last_pos = (0, 0)
-      pos_history = []
-      pos_history.append(last_pos)
-      back_step = 0
-
-      # define start and goal
-      grid[0, 0] = 2
-      grid[-1, -1] = 3
-
-      # main program
-      while not done:
-        for event in pygame.event.get():
-          if event.type == pygame.QUIT:
-            done = True
-              
-          # wait for user to press RETURN key to start    
-          elif event.type == pygame.KEYDOWN:
-              if event.key==pygame.K_RETURN:
-                  run = True
-      
-        screen.fill(grey) # fill background in grey
-        
-        # draw
-        for row in range(num_rows):
-          for column in range(num_columns):
-
-            color = idx_to_color[int(grid[row, column])]
-            pygame.draw.rect(screen, color, 
-                                [(margin + width) * column + margin, 
-                                (margin + height) * row + margin,
-                                width, height])
-        # set limit to 60 frames per second
-        clock.tick(60)
-      
-        # update screen
-        pygame.display.flip()
-      
-        if run == True:
-            # feed the algorithm the last updated position and the grid
-            grid, last_pos, back_step, done = generate_step(grid, last_pos, pos_history, back_step)
-            if last_pos not in pos_history:
-                pos_history.append(last_pos)
-            sleep(0.01)
-
-      close = False
-      while not close:
-        for event in pygame.event.get():
-          if event.type == pygame.QUIT:
-            close = True
-            pygame.quit()
-        # wait for user to press any key to start    
-        if event.type == pygame.KEYDOWN:
-            close = True
-            pygame.quit()
-
-    else:
-
-      print(f"Generating Maze {iter_maze}/{args.num_mazes}...", end=" ")
-
-      done = False # loop until done
-
-      # initialize last_pos variable. Its the starting point for the algorithm
-      last_pos = (0, 0)
-      pos_history = []
-      pos_history.append(last_pos)
-      back_step = 0
-
-      # define start and goal
-      grid[0, 0] = 2
-      grid[-1, -1] = 3
-
-      # main program
-      while not done:
-        # feed the algorithm the last updated position and the grid
-        grid, last_pos, back_step, done = generate_step(grid, last_pos, pos_history, back_step)
-        if last_pos not in pos_history:
-          pos_history.append(last_pos)
-
-
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--num_mazes", type=int, default=1, help="Number of mazes to generate")
+    parser.add_argument("--rows", type=int, default=40, help="Maze height (rows)")
+    parser.add_argument("--cols", type=int, default=40, help="Maze width (columns)")
+    parser.add_argument("--display", type=int, default=0, help="Show pygame window (1) or not (0)")
+    args = parser.parse_args()
 
     MAZES_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = MAZES_DIR / f"maze_{iter_maze}.csv"
 
-    with out_path.open("w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerows(grid)
+    for iter_maze in range(args.num_mazes):
+        print(f"Generating Maze {iter_maze}/{args.num_mazes - 1}...", end=" ")
 
+        maze = generate_maze_dfs(args.cols, args.rows)
+        grid = maze.grid
 
-        
+        out_path = MAZES_DIR / f"maze_{iter_maze}.csv"
+        with out_path.open("w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerows(grid)
 
-    print(f"{time.time()-start_t:.3f} s")
+        print(f"saved to {out_path}")
 
-  print(f"--- finished {time.time()-start_t0:.3f} s---")
-  exit(0)
+    print(f"--- finished {time.time() - start_t0:.3f} s---")
