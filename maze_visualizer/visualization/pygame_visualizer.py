@@ -65,7 +65,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--solve",
-        choices=["bfs", "dfs", "astar"],
+        choices=["bfs", "dfs", "astar", "dijkstra"],
         default=None,
         help="Run an animated pathfinding algorithm on the maze (after it is loaded/generated).",
     )
@@ -74,6 +74,31 @@ if __name__ == "__main__":
         action="store_true",
         help="Advance animation one step at a time on keypress instead of time-based playback.",
     )
+    parser.add_argument(
+        "--gen_fps",
+        type=int,
+        default=30,
+        help="Max FPS for generation animation (higher = faster).",
+    )
+    parser.add_argument(
+        "--solve_fps",
+        type=int,
+        default=30,
+        help="Max FPS for solving animation (higher = faster).",
+    )
+    parser.add_argument(
+        "--gen_steps_per_frame",
+        type=int,
+        default=1,
+        help="How many generation steps to advance per drawn frame.",
+    )
+    parser.add_argument(
+        "--solve_steps_per_frame",
+        type=int,
+        default=1,
+        help="How many solver steps to advance per drawn frame.",
+    )
+
 
 
     args = parser.parse_args()
@@ -228,18 +253,20 @@ if __name__ == "__main__":
     if args.solve is not None:
         if args.solve == "bfs":
             from maze_visualizer.algorithms.pathfinding.bfs_solver import bfs_step_sequence
-            step_gen = bfs_step_sequence(current_grid.copy())
+            step_gen = bfs_step_sequence(current_grid)
         elif args.solve == "dfs":
             from maze_visualizer.algorithms.pathfinding.dfs_solver import dfs_step_sequence
             step_gen = dfs_step_sequence(current_grid)
         elif args.solve == "astar":
-            # placeholder: astar_step_sequence(grid)
-            raise NotImplementedError("A* solve animation not implemented yet.")
+            from maze_visualizer.algorithms.pathfinding.astar_solver import astar_step_sequence
+            step_gen = astar_step_sequence(current_grid)
+        elif args.solve == "dijkstra":
+            from maze_visualizer.algorithms.pathfinding.dijkstra_solver import dijkstra_step_sequence
+            step_gen = dijkstra_step_sequence(current_grid)
         else:
             raise Exception("Invalid solver selected.")
 
         for step_grid in step_gen:
-            # Allow quitting during solving animation
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     finish = True
@@ -248,10 +275,10 @@ if __name__ == "__main__":
                 break
 
             draw_grid(step_grid.astype(int))
-            clock.tick(30)  # 10 FPS; lower = slower, more visible
+            clock.tick(10)
 
-        # After solving, keep the last frame
         current_grid = step_grid.astype(int)
+
 
 
     # ---------------- Event loop (hold final frame) ----------------
