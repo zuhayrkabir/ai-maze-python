@@ -1,4 +1,36 @@
-# Automatic Maze generator and Automatic maze solver
+# 🧩 AI Maze Generator & Pathfinding Visualizer
+
+A fully modular, extensible Python project for generating and solving mazes using classic algorithms — featuring real-time visualization, multiple generation methods, animated exploration, and a clean software-architecture–driven codebase.
+
+This project began as a fork of the original DFS generator/solver and has been transformed into a complete framework for experimenting with maze generation + pathfinding algorithms.
+
+
+
+
+# Features
+
+🔨 Maze Generation Algorithms (Static + Animated)
+
+Implemented in a clean, extensible architecture under maze_visualizer/algorithms/generation/:
+
+1. DFS (Recursive Backtracker)
+- Depth-first exploration
+- Produces long, winding mazes
+- Fully animatable (see the maze carve itself)
+
+2. Prim’s Algorithm (Randomized)
+- Uniformly expanding frontier
+- Creates bushier, more organic mazes
+- Fully animatable
+
+3. Kruskal’s Algorithm (Union–Find)
+- Graph-theoretic spanning tree construction
+- Carves corridors by merging components
+- Fully animatable
+
+Use --gen_algo dfs/prim/kruskal to switch.
+
+
 
 ## About
 This project consists of two parts: An automatic maze generator and an automatic Maze solver. 
@@ -37,29 +69,3 @@ After solving the maze the solution is then saved into a csv file. Folder `mazes
 
 ## Requirements
 * Install requirements `pip install -r requirements.txt`
-
-## Usage
-* To generate a new maze run `python maze_generator.py --display=1 --num_mazes=100`
-* To solve an exisiting maze using A* run `python aStar_pathfinder.py --maze_file=maze_1.csv --display=1`
-* To solve an exisiting maze using DFS run `python dfs_pathfinder.py --maze_file=maze_1.csv --display=1`
-* To solve an exisiting maze using BFS run `python bfs_pathfinder.py --maze_file=maze_1.csv --display=1`
-
-By default display is set to True (1) and number of mazes is set to 1. To run visualization press enter when the window loads.
-
-## Options
-* display: 1 (True, per default), 0 (False)
-* num_mazes: int (1 default)
-* maze_file: filename of csv maze in /mazes. (default maze_1.csv)
-
-## Structure
-```
---- /mazes
-      |__ ...
---- / mazes_solutions
-      |__ ...
---- aStar_pathfinder.py
---- helper_aStar.py
---- dfs_pathfinder.py
---- bfs_pathfinder.py
---- maze_generator.py
-```
