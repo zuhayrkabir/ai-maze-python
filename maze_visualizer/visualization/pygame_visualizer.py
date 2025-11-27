@@ -58,6 +58,7 @@ if __name__ == "__main__":
         default="dfs",
         help="Maze generation algorithm when using live source",
     )
+
     parser.add_argument(
         "--animate",
         action="store_true",
@@ -146,11 +147,16 @@ if __name__ == "__main__":
         pygame.display.flip()
 
     # ---------------- Static vs animated live mode ----------------
-    if args.source == "live" and args.animate and args.gen_algo == "dfs":
-        # Animated DFS generation
-        from maze_visualizer.algorithms.generation.dfs_generator import dfs_step_sequence
+    if args.source == "live" and args.animate:
+        if args.gen_algo == "dfs":
+            from maze_visualizer.algorithms.generation.dfs_generator import dfs_step_sequence
+            step_gen = dfs_step_sequence(args.cols, args.rows)
+        elif args.gen_algo == "prim":
+            from maze_visualizer.algorithms.generation.prim_generator import prim_step_sequence
+            step_gen = prim_step_sequence(args.cols, args.rows)
+        else:
+            raise Exception("Animation not supported for this algorithm.")
 
-        step_gen = dfs_step_sequence(args.cols, args.rows)
 
         for step_grid in step_gen:
             # Handle quit events during animation
