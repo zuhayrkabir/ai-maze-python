@@ -170,6 +170,52 @@ def generate_maze_dfs(width: int, height: int, seed: int | None = None) -> Maze:
 #==============================================================================
 #==============================================================================
 
+
+def dfs_step_sequence(width: int, height: int, seed: int | None = None):
+    """
+    Generator that yields the grid at each DFS step.
+
+    This uses the same logic as generate_maze_dfs, but instead of
+    returning only the final maze, it yields intermediate grids for animation.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    # Integer grid
+    grid = np.zeros((height, width), dtype=int)
+
+    last_pos = (0, 0)
+    pos_history = [last_pos]
+    back_step = 0
+    done = False
+
+    # start & goal markers (same convention)
+    grid[0, 0] = 2
+    grid[-1, -1] = 3
+
+    # yield initial state
+    yield grid.copy()
+
+    # DFS carving loop
+    while not done:
+        grid, last_pos, back_step, done = generate_step(grid, last_pos, pos_history, back_step)
+        if last_pos not in pos_history:
+            pos_history.append(last_pos)
+
+        # yield a copy for visualization
+        yield grid.copy()
+
+    # final state (optional extra yield, but safe)
+    yield grid.copy()
+
+
+#==============================================================================
+#==============================================================================
+
+
+
+
+
 if __name__ == "__main__":
     import argparse
     import csv
